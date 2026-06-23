@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams, useNavigate, Link } from "react-router-dom";
 
@@ -15,36 +15,16 @@ function Destination() {
   // Chat state
   const [chatOpen, setChatOpen] = useState(false);
   const [chatUser, setChatUser] = useState(null);
-  const [myUsername, setMyUsername] = useState(
-    localStorage.getItem("soloTravelerName") || ""
-  );
+  const [myUsername, setMyUsername] = useState(localStorage.getItem("soloTravelerName") || "");
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [chatError, setChatError] = useState("");
-  const messagesEndRef = useRef(null);
-  const pollingRef = useRef(null);
-
-  // Navbar scroll effect
-  useEffect(() => {
-    const navbar = document.querySelector(".navbar");
-    const onScroll = () => {
-      if (navbar) {
-        navbar.classList.toggle("scrolled", window.scrollY > 50);
-      }
-    };
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   useEffect(() => {
     setLoading(true);
     setNotFound(false);
 
     Promise.all([
-      axios
-        .get(`${API}/api/destinations/${name}`)
-        .catch(() => ({ data: null })),
+      axios.get(`${API}/api/destinations/${name}`).catch(() => ({ data: null })),
       axios.get(`${API}/api/trips/${name}`).catch(() => ({ data: [] })),
     ]).then(([destRes, tripsRes]) => {
       if (destRes.data && destRes.data.name) {
@@ -57,89 +37,73 @@ function Destination() {
     });
   }, [name]);
 
-  // Auto-scroll to bottom of chat messages
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
   // Polling for messages
   useEffect(() => {
+    let interval;
     if (chatOpen && chatUser && myUsername) {
       const fetchMessages = () => {
-        axios
-          .get(`${API}/api/chat/${encodeURIComponent(myUsername)}/${encodeURIComponent(chatUser)}`)
-          .then((res) => setMessages(res.data))
-          .catch(() => {});
+        axios.get(`${API}/api/chat/${myUsername}/${chatUser}`)
+          .then(res => setMessages(res.data))
+          .catch(err => console.error("Error fetching messages:", err));
       };
-      fetchMessages();
-      pollingRef.current = setInterval(fetchMessages, 3000);
+      
+      fetchMessages(); // initial fetch
+      interval = setInterval(fetchMessages, 3000); // poll every 3 seconds
     }
-    return () => clearInterval(pollingRef.current);
+    return () => clearInterval(interval);
   }, [chatOpen, chatUser, myUsername]);
 
   const openChat = (user) => {
     setChatUser(user);
     setChatOpen(true);
-    setChatError("");
-    setMessages([]);
   };
 
   const closeChat = () => {
     setChatOpen(false);
     setChatUser(null);
     setMessages([]);
-    setChatError("");
-    clearInterval(pollingRef.current);
   };
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || !myUsername.trim() || sending) return;
+    if (!newMessage.trim() || !myUsername.trim()) return;
 
-    localStorage.setItem("soloTravelerName", myUsername.trim());
-    setSending(true);
-    setChatError("");
+    localStorage.setItem("soloTravelerName", myUsername);
+
+    const msgData = {
+      senderId: myUsername,
+      receiverId: chatUser,
+      content: newMessage
+    };
 
     try {
-      const res = await axios.post(`${API}/api/chat/send`, {
-        senderId: myUsername.trim(),
-        receiverId: chatUser,
-        content: newMessage.trim(),
-      });
-      setMessages((prev) => [...prev, res.data]);
+      const res = await axios.post(`${API}/api/chat/send`, msgData);
+      setMessages([...messages, res.data]);
       setNewMessage("");
     } catch (err) {
-      const msg =
-        err.response?.data?.error || "Failed to send message. Please retry.";
-      setChatError(msg);
-    } finally {
-      setSending(false);
+      console.error("Error sending message:", err);
     }
   };
 
-  const getInitials = (username) =>
-    username
+  const getInitials = (name) => {
+    return name
       .split(/[\s_]+/)
       .map((w) => w[0])
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  };
 
-  // ===== LOADING STATE =====
   if (loading) {
     return (
       <div>
-        <nav className="navbar scrolled">
+        <nav className="navbar">
           <div className="navbar-logo" onClick={() => navigate("/")}>
-            Solo<span className="accent">Travel</span>
+            🌍 <span>SoloTravel</span>
           </div>
           <div className="navbar-links">
             <Link to="/">Home</Link>
-            <Link to="/plan" className="btn-plan">
-              Plan a Trip
-            </Link>
+            <Link to="/plan" className="btn-plan">Plan a Trip</Link>
           </div>
         </nav>
         <div className="loading">
@@ -150,28 +114,21 @@ function Destination() {
     );
   }
 
-  // ===== NOT FOUND STATE =====
   if (notFound) {
     return (
       <div>
-        <nav className="navbar scrolled">
+        <nav className="navbar">
           <div className="navbar-logo" onClick={() => navigate("/")}>
-            Solo<span className="accent">Travel</span>
+            🌍 <span>SoloTravel</span>
           </div>
           <div className="navbar-links">
             <Link to="/">Home</Link>
-            <Link to="/plan" className="btn-plan">
-              Plan a Trip
-            </Link>
+            <Link to="/plan" className="btn-plan">Plan a Trip</Link>
           </div>
         </nav>
         <div className="not-found">
-          <div className="not-found-icon">🗺️</div>
-          <h2>Destination Not Found</h2>
-          <p>
-            We don't have info for "<strong>{name}</strong>" yet. Try one of our
-            popular destinations!
-          </p>
+          <h2>🗺️ Destination Not Found</h2>
+          <p>We don't have info for "{name}" yet. Try one of our popular destinations!</p>
           <button className="search-btn" onClick={() => navigate("/")}>
             ← Back to Home
           </button>
@@ -180,24 +137,21 @@ function Destination() {
     );
   }
 
-  // ===== MAIN CONTENT =====
   return (
     <div className="dest-detail">
       {/* Navbar */}
-      <nav className="navbar scrolled">
+      <nav className="navbar">
         <div className="navbar-logo" onClick={() => navigate("/")}>
-          Solo<span className="accent">Travel</span>
+          🌍 <span>SoloTravel</span>
         </div>
         <div className="navbar-links">
           <Link to="/">Home</Link>
-          <Link to="/plan" className="btn-plan">
-            Plan a Trip
-          </Link>
+          <Link to="/plan" className="btn-plan">Plan a Trip</Link>
         </div>
       </nav>
 
       {/* Hero Banner */}
-      {data.image ? (
+      {data.image && (
         <div className="dest-hero">
           <img className="dest-hero-img" src={data.image} alt={data.name} />
           <div className="dest-hero-overlay">
@@ -207,12 +161,14 @@ function Destination() {
             )}
           </div>
         </div>
-      ) : (
-        <div style={{ paddingTop: "90px" }}>
+      )}
+
+      {!data.image && (
+        <div style={{ paddingTop: "20px" }}>
           <button className="back-btn" onClick={() => navigate("/")}>
             ← Back
           </button>
-          <div style={{ padding: "20px 48px" }}>
+          <div style={{ padding: "20px 40px" }}>
             <h1 className="dest-hero-title">{data.name}</h1>
           </div>
         </div>
@@ -272,6 +228,7 @@ function Destination() {
             </ul>
           </div>
         )}
+
         {data.thingsToDo && data.thingsToDo.length > 0 && (
           <div className="info-card">
             <h2 className="info-card-title">
@@ -324,10 +281,7 @@ function Destination() {
                 {trip.notes && (
                   <div className="traveler-notes">{trip.notes}</div>
                 )}
-                <button
-                  className="chat-btn"
-                  onClick={() => openChat(trip.userId)}
-                >
+                <button className="chat-btn" onClick={() => openChat(trip.userId)}>
                   💬 Chat with {trip.userId}
                 </button>
               </div>
@@ -335,11 +289,7 @@ function Destination() {
           </div>
         ) : (
           <div style={{ textAlign: "center", padding: "40px" }}>
-            <Link
-              to="/plan"
-              className="btn-plan"
-              style={{ fontSize: "1rem", padding: "14px 32px" }}
-            >
+            <Link to="/plan" className="btn-plan" style={{ fontSize: "1rem", padding: "14px 32px" }}>
               ✈️ Plan Your Trip Here
             </Link>
           </div>
@@ -348,85 +298,55 @@ function Destination() {
 
       {/* Footer */}
       <footer className="footer">
-        <p>
-          © 2026 SoloTravel — Built for adventurers who explore alone, together.
-        </p>
+        <p>© 2026 SoloTravel — Built for adventurers who explore alone, together.</p>
       </footer>
 
       {/* Chat Modal */}
       {chatOpen && (
-        <div className="chat-overlay" role="dialog" aria-modal="true" aria-label={`Chat with ${chatUser}`}>
+        <div className="chat-overlay">
           <div className="chat-modal">
             <div className="chat-header">
               <h3>Chat with {chatUser}</h3>
-              <button className="close-btn" onClick={closeChat} aria-label="Close chat">
-                ✖
-              </button>
+              <button className="close-btn" onClick={closeChat}>✖</button>
             </div>
-
+            
             <div className="chat-setup">
-              <input
-                type="text"
-                placeholder="Enter your name to chat..."
+              <input 
+                type="text" 
+                placeholder="Enter your name to chat..." 
                 value={myUsername}
                 onChange={(e) => setMyUsername(e.target.value)}
                 className="name-input"
-                maxLength={40}
-                aria-label="Your display name"
               />
             </div>
 
             <div className="chat-messages">
               {messages.length === 0 ? (
-                <p className="no-messages">No messages yet. Say hi! 👋</p>
+                <p className="no-messages">No messages yet. Say hi!</p>
               ) : (
                 messages.map((msg, idx) => {
-                  const isMine =
-                    msg.senderId.toLowerCase() === myUsername.toLowerCase();
+                  const isMine = msg.senderId.toLowerCase() === myUsername.toLowerCase();
                   return (
-                    <div
-                      key={idx}
-                      className={`message ${isMine ? "sent" : "received"}`}
-                    >
+                    <div key={idx} className={`message ${isMine ? 'sent' : 'received'}`}>
                       <div className="message-content">{msg.content}</div>
                       <div className="message-time">
-                        {new Date(msg.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                       </div>
                     </div>
                   );
                 })
               )}
-              <div ref={messagesEndRef} />
             </div>
 
-            {chatError && (
-              <div className="chat-error">{chatError}</div>
-            )}
-
             <form className="chat-input-area" onSubmit={sendMessage}>
-              <input
+              <input 
                 type="text"
-                placeholder={
-                  !myUsername.trim()
-                    ? "Enter your name above first..."
-                    : "Type a message..."
-                }
+                placeholder="Type a message..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                disabled={!myUsername.trim() || sending}
-                maxLength={1000}
-                aria-label="Message input"
+                disabled={!myUsername.trim()}
               />
-              <button
-                type="submit"
-                disabled={!newMessage.trim() || !myUsername.trim() || sending}
-                aria-label="Send message"
-              >
-                {sending ? "..." : "Send"}
-              </button>
+              <button type="submit" disabled={!newMessage.trim() || !myUsername.trim()}>Send</button>
             </form>
           </div>
         </div>
