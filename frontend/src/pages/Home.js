@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import Navbar from "../components/Navbar";
+import RecommendationWidget from "../components/RecommendationWidget";
+import Footer from "../components/Footer";
 
 const API = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -11,126 +14,245 @@ function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const navbar = document.querySelector(".navbar");
-    const onScroll = () => {
-      if (navbar) navbar.classList.toggle("scrolled", window.scrollY > 50);
-    };
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  useEffect(() => {
     axios
-      .get(`${API}/api/destinations`)
-      .then((res) => { setDestinations(res.data); setLoading(false); })
+      .get(`${API}/api/destinations?limit=6&sortBy=popular`)
+      .then((res) => {
+        if (res.data && res.data.destinations) {
+          setDestinations(res.data.destinations);
+        } else if (Array.isArray(res.data)) {
+          setDestinations(res.data);
+        }
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   }, []);
 
   const handleSearch = () => {
-    if (place.trim()) navigate(`/destination/${place.trim().toLowerCase()}`);
+    if (place.trim()) {
+      navigate(`/explore?q=${encodeURIComponent(place.trim())}`);
+    } else {
+      navigate("/explore");
+    }
   };
 
   return (
-    <div>
-      <nav className="navbar">
-        <div className="navbar-logo" onClick={() => navigate("/")}>
-          Solo<span className="accent">Travel</span>
-        </div>
-        <div className="navbar-center">
-          <a href="#destinations">Destinations</a>
-          <a href="#destinations">Explore</a>
-          <Link to="/plan">Trips</Link>
-        </div>
-        <Link to="/plan" className="btn-cta">Plan a Trip ✈</Link>
-      </nav>
+    <div className="home-page">
+      <Navbar />
 
+      {/* Hero Section with Incredible India Visuals */}
       <section className="hero">
         <div className="hero-bg">
-          <img src="https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=1920&q=80" alt="Travel landscape" />
+          <img
+            src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=1920&q=80"
+            alt="Incredible India Heritage"
+          />
         </div>
         <div className="hero-content">
-          <h1>Explore your<br /><span className="accent-text">place to travel</span></h1>
-          <p className="hero-subtitle">Discover stunning destinations, connect with fellow solo travelers, and create memories that last a lifetime.</p>
+          <div className="hero-pill-badge">
+            <span>🇮🇳</span> The Premier Solo Travel Platform for India
+          </div>
+          <h1>
+            Explore Incredible<br />
+            <span className="accent-text">India On Your Terms</span>
+          </h1>
+          <p className="hero-subtitle">
+            Uncover ancient fortresses, misty Himalayan mountain trails, tranquil Kerala backwaters, and vibrant spiritual ghats. Connect with verified solo travelers across all 28 States and 8 Union Territories.
+          </p>
+
+          {/* Search Bar */}
           <div className="search-bar" role="search">
             <div className="search-field">
               <span className="field-icon">🔍</span>
               <input
                 type="text"
-                placeholder="Where to? (e.g. Paris, Tokyo)"
+                placeholder="Where in India? (e.g. Jaipur, Manali, Rishikesh, Kerala)..."
                 value={place}
                 onChange={(e) => setPlace(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                aria-label="Search destination"
+                aria-label="Search Indian destination or state"
               />
             </div>
             <div className="search-divider"></div>
             <div className="search-field" style={{ flex: "0 0 auto" }}>
-              <span className="field-icon">📅</span>
-              <span style={{ color: "#808080", fontSize: "0.88rem" }}>Anytime</span>
+              <span className="field-icon">🗺️</span>
+              <span style={{ color: "#b8b8b8", fontSize: "0.88rem" }}>28 States • 8 UTs</span>
             </div>
             <div className="search-divider"></div>
             <div className="search-field" style={{ flex: "0 0 auto" }}>
               <span className="field-icon">👤</span>
-              <span style={{ color: "#808080", fontSize: "0.88rem" }}>Solo</span>
+              <span style={{ color: "#c9a96e", fontSize: "0.88rem", fontWeight: "600" }}>Solo Friendly</span>
             </div>
-            <button className="search-btn-main" onClick={handleSearch}>Explore</button>
+            <button className="search-btn-main" onClick={handleSearch}>
+              Explore India
+            </button>
           </div>
+
+          {/* Quick suggestions */}
           <div className="search-suggestions">
-            {["Paris", "Tokyo", "Bali", "London", "Bangkok", "Iceland"].map((s) => (
-              <button key={s} className="suggestion-chip" onClick={() => navigate(`/destination/${s.toLowerCase()}`)}>
-                {s}
+            <span className="suggestions-label">Popular now:</span>
+            {[
+              { name: "Jaipur", slug: "jaipur" },
+              { name: "Rishikesh", slug: "rishikesh" },
+              { name: "Manali", slug: "manali" },
+              { name: "Varanasi", slug: "varanasi" },
+              { name: "Hampi", slug: "hampi" },
+              { name: "North Goa", slug: "north-goa" },
+              { name: "Leh-Ladakh", slug: "leh-ladakh" },
+              { name: "Munnar", slug: "munnar" }
+            ].map((s) => (
+              <button
+                key={s.slug}
+                className="suggestion-chip"
+                onClick={() => navigate(`/destination/${s.slug}`)}
+              >
+                {s.name}
               </button>
             ))}
           </div>
         </div>
+
         <div className="hero-promo">
-          <h3>We provide a variety of the best solo travel experiences for those who seek it.</h3>
-          <p>Don't worry about the journey. We've got you covered.</p>
+          <h3>"The real voyage of discovery consists not in seeking new landscapes, but in having new eyes."</h3>
+          <p>Over 18+ curated solo destinations with safety metrics & live traveler meetups.</p>
         </div>
       </section>
 
-      <section className="section" id="destinations">
-        <div className="section-header">
-          <p className="section-label">Popular Destinations</p>
-          <h2 className="section-title">Where Will You Go?</h2>
-          <p className="section-subtitle">Hand-picked destinations perfect for solo explorers, rated by safety, budget, and overall solo experience.</p>
+      {/* Explore India Feature Callout */}
+      <section className="india-highlight-strip">
+        <div className="strip-container">
+          <div className="strip-card" onClick={() => navigate("/explore?category=Heritage")}>
+            <span className="strip-icon">🏰</span>
+            <div>
+              <h4>Royal Heritage & Forts</h4>
+              <p>Rajasthan, Madhya Pradesh, Delhi</p>
+            </div>
+          </div>
+          <div className="strip-card" onClick={() => navigate("/explore?category=Spiritual")}>
+            <span className="strip-icon">🕉️</span>
+            <div>
+              <h4>Spiritual Awakening</h4>
+              <p>Varanasi, Rishikesh, Amritsar, Bodh Gaya</p>
+            </div>
+          </div>
+          <div className="strip-card" onClick={() => navigate("/explore?category=Hill%20Station")}>
+            <span className="strip-icon">🏔️</span>
+            <div>
+              <h4>Himalayan Escapes</h4>
+              <p>Himachal, Uttarakhand, Ladakh, Sikkim</p>
+            </div>
+          </div>
+          <div className="strip-card" onClick={() => navigate("/explore?category=Beach%20%26%20Coastal")}>
+            <span className="strip-icon">🏖️</span>
+            <div>
+              <h4>Coastal & Tropical</h4>
+              <p>Goa, Kerala, Pondicherry, Andaman</p>
+            </div>
+          </div>
         </div>
+      </section>
+
+      {/* AI Smart Recommendations Section */}
+      <section className="section bg-opacity-25" style={{ padding: "1rem 0" }}>
+        <div className="container">
+          <RecommendationWidget 
+            title="🎯 Personalized India Recommendations"
+            subtitle="Calculated specifically for your travel preferences, budget in ₹ INR, and preferred adventure styles."
+            limit={6}
+          />
+        </div>
+      </section>
+
+      {/* Popular Solo Destinations */}
+      <section className="section" id="popular-destinations">
+        <div className="section-header">
+          <p className="section-label">Bharat Solo Collection</p>
+          <h2 className="section-title">Highest-Rated Solo Hubs in India</h2>
+          <p className="section-subtitle">
+            Rated by safety index, vibrant traveler community, affordable stays in Indian Rupees (₹), and ease of solo transit.
+          </p>
+        </div>
+
         {loading ? (
-          <div className="loading"><div className="spinner"></div><p className="loading-text">Loading destinations...</p></div>
+          <div className="loading">
+            <div className="spinner"></div>
+            <p className="loading-text">Loading Indian destinations...</p>
+          </div>
         ) : (
           <div className="destinations-grid">
             {destinations.map((dest) => (
               <div
-                key={dest.name}
+                key={dest.slug || dest.name}
                 className="dest-card"
-                onClick={() => navigate(`/destination/${dest.name.toLowerCase()}`)}
+                onClick={() => navigate(`/destination/${dest.slug || dest.name.toLowerCase()}`)}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === "Enter" && navigate(`/destination/${dest.name.toLowerCase()}`)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && navigate(`/destination/${dest.slug || dest.name.toLowerCase()}`)
+                }
                 aria-label={`Explore ${dest.name}`}
               >
                 <div className="dest-card-img-wrapper">
                   <img className="dest-card-img" src={dest.image} alt={dest.name} loading="lazy" />
-                  {dest.soloScore && <div className="dest-card-solo-score">⭐ {dest.soloScore} Solo Score</div>}
+                  <div className="dest-card-badges">
+                    {dest.soloScore && (
+                      <span className="badge-solo">⭐ {dest.soloScore} Solo Score</span>
+                    )}
+                    {dest.safetyRating && (
+                      <span className="badge-safety">🛡️ {dest.safetyRating} Safety</span>
+                    )}
+                  </div>
                 </div>
+
                 <div className="dest-card-body">
+                  <div className="dest-hierarchy-crumbs">
+                    <span>{dest.state}</span>
+                    <span>•</span>
+                    <span>{dest.city}</span>
+                  </div>
+
                   <h3 className="dest-card-name">{dest.name}</h3>
                   <p className="dest-card-desc">{dest.description}</p>
-                  <div className="dest-card-meta">
-                    {dest.avgBudget && <span className="dest-card-meta-item"><span className="icon">💰</span> {dest.avgBudget}</span>}
-                    {dest.bestTime && <span className="dest-card-meta-item"><span className="icon">📅</span> {dest.bestTime}</span>}
-                    {dest.safetyRating && <span className="dest-card-meta-item"><span className="icon">🛡️</span> {dest.safetyRating}/5</span>}
+
+                  <div className="dest-card-category-tags">
+                    {(dest.category || []).slice(0, 2).map((cat) => (
+                      <span key={cat} className="category-tag">
+                        {cat}
+                      </span>
+                    ))}
+                    {dest.idealDurationDays && (
+                      <span className="duration-tag">⏱️ {dest.idealDurationDays} Days</span>
+                    )}
+                  </div>
+
+                  <div className="dest-card-footer">
+                    <div className="dest-budget-info">
+                      <span className="budget-label">Avg Budget</span>
+                      <span className="budget-value">
+                        ₹{dest.avgBudget ? dest.avgBudget.perDay.toLocaleString("en-IN") : "1,500"}/day
+                      </span>
+                    </div>
+                    <button className="btn-explore-card">Explore Details →</button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* CTA to Explore India Hub */}
+        <div className="explore-all-cta-box">
+          <div className="cta-content">
+            <h3>Ready to see all 28 States & 8 Union Territories?</h3>
+            <p>Filter by budget in Rupees, trip duration, safety rating, and regional terrain.</p>
+          </div>
+          <button className="search-btn-main" onClick={() => navigate("/explore")}>
+            Open Explore India Hub 🇮🇳
+          </button>
+        </div>
       </section>
 
-      <footer className="footer">
-        <p>© 2026 SoloTravel — Built for adventurers who explore alone, together.</p>
-      </footer>
+      {/* Architectural Theme Footer */}
+      <Footer />
     </div>
   );
 }

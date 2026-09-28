@@ -61,6 +61,7 @@ prisma
 app.set("dbConnected", () => dbConnected);
 
 // ===== ROUTES =====
+const authRoutes = require("../routes/authRoutes");
 const tripRoutes = require("../routes/tripRoutes");
 const destinationRoutes = require("../routes/destinationRoutes");
 const chatRoutes = require("../routes/chatRoutes");
@@ -88,6 +89,7 @@ app.get("/", (req, res) => {
     });
 });
 
+app.use("/api/auth", authRoutes);
 app.use("/api/trips", tripRoutes);
 app.use("/api/destinations", destinationRoutes);
 app.use("/api/chat", chatRoutes);
